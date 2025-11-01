@@ -1,6 +1,6 @@
 services:
-  - type: worker
-    name: telegram-welcome-bot
+  - type: web
+    name: youtube-1k-boosters-bot
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: python main.py

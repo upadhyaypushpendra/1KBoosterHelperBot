@@ -2,8 +2,18 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import os
+import asyncio
+import threading
+from fastapi import FastAPI
+import uvicorn
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+app = FastAPI()
+
+@app.get("/")
+def home():
+    return {"status": "Bot is running fine!"}
 
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -32,13 +42,30 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN
         )
 
-# Initialize app
-app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# Handlers
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_member))
+async def main_bot():
+    # Initialize app
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_member))
+    print("🤖 Telegram bot started...")
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling()
+    # Keep it running
+    await asyncio.Event().wait()
+
+
+def run_bot():
+    """Runs the Telegram bot in its own independent event loop."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(main_bot())
+
 
 if __name__ == "__main__":
-    print("🤖 Bot is running...")
-    app.run_polling()
+    # Run bot in separate thread
+    threading.Thread(target=run_bot, daemon=True).start()
+
+    # Start FastAPI server (Render will bind to this)
+    uvicorn.run(app, host="0.0.0.0", port=10000)
